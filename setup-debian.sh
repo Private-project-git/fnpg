@@ -53,6 +53,6 @@ sudo docker compose exec web npx prisma db seed
 
 echo "=========================================================="
 echo " Setup Completed Successfully!"
-echo " Web app is listening on: http://localhost:3000"
-echo " CMS Admin dashboard:    http://localhost:3000/admin"
+echo " Web app is listening on: http://localhost:2020"
+echo " CMS Admin dashboard:    http://localhost:2020/admin"
 echo "=========================================================="
