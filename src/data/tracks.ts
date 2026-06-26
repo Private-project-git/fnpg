@@ -74,10 +74,10 @@ export const FALLBACK_SONGS: NormalizedTrack[] = [
     artist: '8CTRL',
     album: 'Fuck You Bro - Single',
     artwork: {
-      url: 'https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/44/6a/a5/446aa581-e4e8-df30-97de-e2561fc7e999/1200214051570.jpg/600x600bb.jpg',
+      url: 'https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/45/9c/73/459c7369-7198-0ee8-ed83-aa9554d100f8/1200214342326.jpg/600x600bb.jpg',
     },
     preview: {
-      url: '',
+      url: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/0e/a8/c5/0ea8c58f-d265-e49f-ded1-3a612f391938/mzaf_14710804288394303389.plus.aac.p.m4a',
       duration: 185,
     },
     releaseDate: '2026',

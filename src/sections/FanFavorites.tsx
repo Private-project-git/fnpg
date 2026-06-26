@@ -55,7 +55,7 @@ export const FanFavorites = () => {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
-                  className="group flex items-center gap-6 p-4 rounded bg-surface/50 border border-transparent hover:border-blood-red/30 transition-all duration-300 cursor-pointer relative overflow-hidden"
+                  className="group flex items-center gap-6 p-4 rounded bg-surface border border-transparent hover:border-blood-red/30 transition-all duration-300 cursor-pointer relative overflow-hidden"
                   onClick={() => {
                     if (state.currentTrackId === item.id) {
                       if (state.isPlaying) {

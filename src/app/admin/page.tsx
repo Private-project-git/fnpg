@@ -11,7 +11,7 @@ import {
   Flame, HelpCircle, ArrowRightLeft, Sliders, Palette, 
   Terminal, ShieldCheck, Download, Upload, Check, AlertTriangle,
   FileText, Smartphone, Tablet, Monitor, RotateCw, Undo2 as Undo, Redo2 as Redo, Cpu, EyeOff,
-  Wifi, WifiOff, Activity
+  Wifi, WifiOff, Activity, Menu, X
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +160,10 @@ export default function CompleteCMSStudio() {
   // DB tracks state
   const [tracks, setTracks] = useState<any[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<any | null>(null);
+
+  // Responsive & Sync states
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [syncingReleases, setSyncingReleases] = useState(false);
 
   // ── Save State Machine ──────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
@@ -591,6 +595,30 @@ export default function CompleteCMSStudio() {
     saveAllSettingsRef.current = saveAllSettings;
   }, [saveAllSettings]);
 
+  // Sync releases from iTunes API
+  const handleSyncReleases = async () => {
+    if (syncingReleases) return;
+    setSyncingReleases(true);
+    notify('info', 'Contacting iTunes Search API...');
+    try {
+      const res = await fetch('/api/admin/releases/sync', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.success) {
+        notify('success', data.message || 'Releases synced successfully!');
+        // Refresh state
+        await fetchAllData();
+      } else {
+        notify('error', data.error?.message || 'Sync failed.');
+      }
+    } catch (err: any) {
+      notify('error', `Sync failed: ${err.message || String(err)}`);
+    } finally {
+      setSyncingReleases(false);
+    }
+  };
+
   // Update specific settings block and add to history
   const updateSettingsField = (blockKey: string, fieldKey: string, val: any) => {
     const updated = {
@@ -664,10 +692,10 @@ export default function CompleteCMSStudio() {
         {notifications.map(n => (
           <div 
             key={n.id} 
-            className={`p-4 rounded border text-xs font-mono flex items-center gap-3 shadow-2xl backdrop-blur-md animate-fade-in ${
-              n.type === 'success' ? 'bg-green-500/10 border-green-500/40 text-green-400' :
-              n.type === 'error' ? 'bg-red-500/10 border-red-500/40 text-red-400' :
-              'bg-blue-500/10 border-blue-500/40 text-blue-400'
+            className={`p-4 rounded border text-xs font-mono flex items-center gap-3 shadow-2xl animate-fade-in ${
+              n.type === 'success' ? 'bg-[#0E0E0E] border-green-500/40 text-green-400' :
+              n.type === 'error' ? 'bg-[#0E0E0E] border-red-500/40 text-red-400' :
+              'bg-[#0E0E0E] border-blue-500/40 text-blue-400'
             }`}
           >
             {n.type === 'success' && <Check className="w-4 h-4 flex-shrink-0" />}
@@ -679,7 +707,7 @@ export default function CompleteCMSStudio() {
 
       {/* Ctrl+K Command Palette Modal */}
       {showCmdPalette && (
-        <div className="fixed inset-0 z-[9998] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowCmdPalette(false)}>
+        <div className="fixed inset-0 z-[9998] bg-black/80 flex items-center justify-center p-4" onClick={() => setShowCmdPalette(false)}>
           <div className="w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-lg shadow-2xl overflow-hidden font-mono" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-white/5 flex items-center gap-3">
               <Command className="w-5 h-5 text-crimson" />
@@ -722,16 +750,25 @@ export default function CompleteCMSStudio() {
       )}
 
       {/* Main Studio layout header */}
-      <header className="h-16 border-b border-white/5 bg-[#0A0A0A] flex items-center justify-between px-6 z-40">
-        <div className="flex items-center gap-4">
-          <span className="font-bebas text-2xl text-blood-red tracking-wider">8CTRL EXPERIENCE ENGINE STUDIO</span>
-          <div className="bg-[#151515] text-[10px] font-mono border border-white/5 px-2 py-0.5 rounded text-text-secondary flex items-center gap-1.5">
+      <header className="min-h-[4rem] py-3 lg:py-0 border-b border-white/5 bg-[#0A0A0A] flex flex-col lg:flex-row items-center justify-between px-6 z-40 gap-4 lg:gap-0">
+        <div className="flex items-center justify-between w-full lg:w-auto gap-4">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setMobileSidebarOpen(prev => !prev)}
+              className="p-2 border border-white/5 bg-elevated hover:bg-surface text-white rounded lg:hidden"
+              title="Open Navigation Menu"
+            >
+              <Menu className="w-4 h-4 text-crimson" />
+            </button>
+            <span className="font-bebas text-lg md:text-2xl text-blood-red tracking-wider">8CTRL EXPERIENCE ENGINE STUDIO</span>
+          </div>
+          <div className="bg-[#151515] text-[10px] font-mono border border-white/5 px-2 py-0.5 rounded text-text-secondary hidden sm:flex items-center gap-1.5">
             <Command className="w-3 h-3 text-crimson" /> Press <kbd className="text-foreground">Ctrl+K</kbd> for commands
           </div>
         </div>
 
         {/* Global Search and Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 w-full lg:w-auto">
           <div className="flex gap-2">
             <button 
               onClick={handleUndo} 
@@ -752,15 +789,25 @@ export default function CompleteCMSStudio() {
           </div>
 
           <button 
-            onClick={() => setShowLivePreview(prev => !prev)}
-            className="flex items-center gap-2 px-4 py-2 border border-white/5 bg-elevated hover:bg-surface text-text-secondary hover:text-white rounded text-xs transition-colors"
+            onClick={handleSyncReleases}
+            disabled={syncingReleases}
+            className="flex items-center gap-1.5 px-3 py-2 border border-white/5 bg-elevated hover:bg-surface text-text-secondary hover:text-white rounded text-xs transition-colors"
+            title="Fetch new releases and auto-populate previews"
           >
-            <Eye className="w-4 h-4 text-crimson" /> {showLivePreview ? 'Hide Workspace Simulator' : 'Show Workspace Simulator'}
+            <RefreshCw className={`w-3.5 h-3.5 text-crimson ${syncingReleases ? 'animate-spin' : ''}`} />
+            <span>{syncingReleases ? 'Syncing...' : 'Refresh Status'}</span>
+          </button>
+
+          <button 
+            onClick={() => setShowLivePreview(prev => !prev)}
+            className="flex items-center gap-2 px-3 py-2 border border-white/5 bg-elevated hover:bg-surface text-text-secondary hover:text-white rounded text-xs transition-colors"
+          >
+            <Eye className="w-4 h-4 text-crimson" /> <span className="hidden sm:inline">{showLivePreview ? 'Hide Simulator' : 'Show Simulator'}</span><span className="sm:hidden">{showLivePreview ? 'Hide Sim' : 'Show Sim'}</span>
           </button>
 
           {syncStatus === 'offline-pending' && (
             <span className="flex items-center gap-1.5 text-crimson font-mono text-[10px] animate-pulse uppercase mr-2" title="Database is offline. Changes are saved locally and will auto-sync when reconnected.">
-              <span className="w-2 h-2 rounded-full bg-crimson" /> Offline — Changes Pending
+              <span className="w-2 h-2 rounded-full bg-crimson" /> Offline
             </span>
           )}
           {syncStatus === 'saving' && (
@@ -777,7 +824,7 @@ export default function CompleteCMSStudio() {
           <button 
             onClick={saveAllSettings}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 bg-blood-red hover:bg-crimson disabled:bg-blood-red/40 text-white rounded text-xs font-semibold shadow-md transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blood-red hover:bg-crimson disabled:bg-blood-red/40 text-white rounded text-xs font-semibold shadow-md transition-colors"
           >
             <Save className="w-4 h-4" /> {saving ? (saveState === 'retrying' ? `Retry #${retryCount}...` : 'Publishing...') : 'Publish Live'}
           </button>
@@ -801,7 +848,7 @@ export default function CompleteCMSStudio() {
 
       {/* DEV-ONLY: Floating Network Inspector Panel */}
       {showNetworkPanel && process.env.NODE_ENV !== 'production' && (
-        <div className="fixed bottom-6 right-6 z-[9990] w-[440px] max-h-[420px] bg-[#0A0A0A]/95 border border-white/10 rounded-lg shadow-2xl backdrop-blur-md font-mono text-xs flex flex-col overflow-hidden">
+        <div className="fixed bottom-6 right-6 z-[9990] w-[440px] max-h-[420px] bg-[#0A0A0A] border border-white/10 rounded-lg shadow-2xl font-mono text-xs flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#111]">
             <div className="flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-crimson" />
@@ -850,10 +897,29 @@ export default function CompleteCMSStudio() {
       {/* Workspace Wrapper */}
       <div className="flex flex-1 overflow-hidden">
         
+        {/* Mobile Sidebar Overlay */}
+        {mobileSidebarOpen && (
+          <div 
+            onClick={() => setMobileSidebarOpen(false)}
+            className="fixed inset-0 bg-black/80 z-40 lg:hidden"
+          />
+        )}
+        
         {/* Collapsible Left Sidebar */}
-        <aside className="w-60 border-r border-white/5 bg-[#080808] flex flex-col justify-between py-6 z-20">
+        <aside className={`fixed lg:relative inset-y-0 left-0 w-60 border-r border-white/5 bg-[#080808] flex flex-col justify-between py-6 z-50 transform transition-transform duration-300 lg:translate-x-0 ${
+          mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
           <nav className="space-y-1 px-4">
-            <div className="text-[10px] font-mono tracking-widest text-text-secondary uppercase px-3 mb-2">Creative Suite</div>
+            <div className="flex justify-between items-center px-3 mb-2 lg:mb-0">
+              <span className="text-[10px] font-mono tracking-widest text-text-secondary uppercase">Creative Suite</span>
+              <button 
+                onClick={() => setMobileSidebarOpen(false)}
+                className="lg:hidden p-1 text-text-secondary hover:text-white"
+                title="Close Navigation"
+              >
+                <X className="w-4 h-4 text-crimson" />
+              </button>
+            </div>
             {[
               { id: 'dashboard', label: 'Studio Overview', icon: LayoutDashboard },
               { id: 'profile', label: 'Artist Identity', icon: User },
@@ -872,7 +938,10 @@ export default function CompleteCMSStudio() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id as any)}
+                  onClick={() => {
+                    setActiveTab(item.id as any);
+                    setMobileSidebarOpen(false);
+                  }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-xs transition-colors ${
                     activeTab === item.id 
                       ? 'bg-blood-red/10 border border-blood-red/30 text-white' 
@@ -896,10 +965,10 @@ export default function CompleteCMSStudio() {
         </aside>
 
         {/* Content & Simulation Pane */}
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
           
           {/* Left Panel: Active tab forms editor */}
-          <div className="flex-1 p-8 overflow-y-auto space-y-8 pb-32 border-r border-white/5 bg-[#050505]">
+          <div className="flex-1 p-4 sm:p-8 overflow-y-auto space-y-8 pb-32 border-b lg:border-b-0 lg:border-r border-white/5 bg-[#050505]">
             
             {/* TAB: DASHBOARD */}
             {activeTab === 'dashboard' && (
@@ -1052,46 +1121,56 @@ export default function CompleteCMSStudio() {
             {/* TAB: DISCOGRAPHY */}
             {activeTab === 'discography' && (
               <div className="space-y-6 animate-fade-in font-mono text-xs">
-                <header className="flex justify-between items-center">
+                <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-white/5 pb-4">
                   <div>
                     <h2 className="text-2xl font-bebas tracking-wide text-foreground uppercase font-sans">Tracks Experience Editor</h2>
-                    <p className="text-xs text-text-secondary mt-1">Bind custom background gradients, particles, blurs, and typography to individual tracks.</p>
+                    <p className="text-xs text-text-secondary mt-1 font-mono">Bind custom background gradients, particles, blurs, and typography to individual tracks.</p>
                   </div>
-                  <button 
-                    onClick={() => {
-                      const newId = Math.random().toString(36).substring(2, 15);
-                      const newTrack = {
-                        id: newId,
-                        title: 'New Track Drop',
-                        artist: '8CTRL',
-                        album: 'Universe Mixtape',
-                        genre: 'Electronic',
-                        duration: 180,
-                        isFeatured: false,
-                        isArtistFav: false,
-                        isFanFav: false,
-                        isLatest: true,
-                        // Extended Experience parameters
-                        slug: 'new-track-drop',
-                        backgroundArtwork: '',
-                        accentColor: '#8B0000',
-                        particlePreset: 'ash',
-                        lightingPreset: 'soft',
-                        typographyPreset: 'bebas',
-                        scrollTransition: 'fade',
-                        ambientPreset: 'ambient_loop_1',
-                        sceneDescription: 'Cold modular reverberation.',
-                        lyrics: 'Lyrics static...',
-                        status: 'published'
-                      };
-                      setTracks(prev => [...prev, newTrack]);
-                      setSelectedTrack(newTrack);
-                      notify('success', 'New track envelope generated');
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blood-red text-white text-xs font-semibold hover:bg-crimson transition-colors rounded font-sans"
-                  >
-                    <Plus className="w-4 h-4" /> Add Release Envelope
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button 
+                      onClick={handleSyncReleases}
+                      disabled={syncingReleases}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 hover:bg-white/10 text-foreground text-xs font-semibold rounded font-sans transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 text-crimson ${syncingReleases ? 'animate-spin' : ''}`} />
+                      <span>{syncingReleases ? 'Syncing...' : 'Sync Releases'}</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const newId = Math.random().toString(36).substring(2, 15);
+                        const newTrack = {
+                          id: newId,
+                          title: 'New Track Drop',
+                          artist: '8CTRL',
+                          album: 'Universe Mixtape',
+                          genre: 'Electronic',
+                          duration: 180,
+                          isFeatured: false,
+                          isArtistFav: false,
+                          isFanFav: false,
+                          isLatest: true,
+                          // Extended Experience parameters
+                          slug: 'new-track-drop',
+                          backgroundArtwork: '',
+                          accentColor: '#8B0000',
+                          particlePreset: 'ash',
+                          lightingPreset: 'soft',
+                          typographyPreset: 'bebas',
+                          scrollTransition: 'fade',
+                          ambientPreset: 'ambient_loop_1',
+                          sceneDescription: 'Cold modular reverberation.',
+                          lyrics: 'Lyrics static...',
+                          status: 'published'
+                        };
+                        setTracks(prev => [...prev, newTrack]);
+                        setSelectedTrack(newTrack);
+                        notify('success', 'New track envelope generated');
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blood-red text-white text-xs font-semibold hover:bg-crimson transition-colors rounded font-sans"
+                    >
+                      <Plus className="w-4 h-4" /> Add Release Envelope
+                    </button>
+                  </div>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1201,6 +1280,137 @@ export default function CompleteCMSStudio() {
                             }}
                             className="w-full bg-[#050505] border border-white/10 p-2 text-foreground outline-none"
                           />
+                        </div>
+                      </div>
+
+                      {/* Track Core Metadata Section */}
+                      <div className="p-4 bg-[#050505] border border-white/5 rounded space-y-4">
+                        <h4 className="text-[10px] text-crimson uppercase font-bold">Track Core Metadata</h4>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Artist Name</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.artist || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, artist: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none rounded"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Album Name</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.album || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, album: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none rounded"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Genre</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.genre || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, genre: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none rounded"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Duration (seconds)</label>
+                            <input 
+                              type="number" 
+                              value={selectedTrack.duration || 0}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, duration: parseInt(e.target.value) || 0 };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none rounded"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Cover Artwork URL</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.coverUrl || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, coverUrl: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none text-[10px] rounded"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Preview Audio URL (mp3/aac)</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.previewUrl || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, previewUrl: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none text-[10px] rounded"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Spotify URL</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.spotifyUrl || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, spotifyUrl: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none text-[10px] rounded"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">Apple Music URL</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.appleUrl || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, appleUrl: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none text-[10px] rounded"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] text-[#444] mb-1">YouTube URL</label>
+                            <input 
+                              type="text" 
+                              value={selectedTrack.youtubeUrl || ''}
+                              onChange={e => {
+                                const updated = { ...selectedTrack, youtubeUrl: e.target.value };
+                                setSelectedTrack(updated);
+                                setTracks(prev => prev.map(t => t.id === selectedTrack.id ? updated : t));
+                              }}
+                              className="w-full bg-[#0E0E0E] border border-white/10 p-1.5 text-foreground outline-none text-[10px] rounded"
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -1418,7 +1628,7 @@ export default function CompleteCMSStudio() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {[
                       { key: 'vignetteSize', label: 'Vignette Overlay Size (%)', min: 0, max: 100 },
                       { key: 'filmGrainOpacity', label: 'Film Grain filter opacity (%)', min: 0, max: 50 },
@@ -2014,7 +2224,7 @@ export default function CompleteCMSStudio() {
 
           {/* Right Panel: Interactive view simulator */}
           {showLivePreview && (
-            <div className="w-[420px] border-l border-white/5 bg-[#070707] flex flex-col justify-between overflow-hidden z-10">
+            <div className="w-full lg:w-[420px] border-t lg:border-t-0 lg:border-l border-white/5 bg-[#070707] flex flex-col justify-between overflow-hidden z-10 shrink-0">
               
               {/* Simulator Header */}
               <div className="p-4 border-b border-white/5 flex flex-col gap-3 bg-[#0A0A0A]">

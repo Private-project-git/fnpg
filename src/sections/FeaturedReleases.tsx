@@ -18,27 +18,28 @@ interface Release {
   isFeatured: boolean;
 }
 
-export const FeaturedReleases = () => {
+export const FeaturedReleases = ({ initialReleases }: { initialReleases?: Release[] }) => {
   // The ref MUST be declared and attached unconditionally.
-  // Previously this component did `if (!featuredRelease) return null` AFTER
-  // calling useScroll({ target: containerRef }), which meant the ref was
-  // registered with Motion before the DOM node existed. Fixed: the section
-  // is always rendered; content is conditionally shown inside it.
   const containerRef = useRef<HTMLDivElement>(null);
   const [featuredRelease, setFeaturedRelease] = useState<Release | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/releases')
-      .then(res => res.json())
-      .then(resJson => {
-        const data = resJson.success ? resJson.data : null;
-        if (Array.isArray(data) && data.length > 0) {
-          const featured = data.find((r: Release) => r.isFeatured) || data[0];
-          setFeaturedRelease(featured);
-        }
-      })
-      .catch(console.error);
-  }, []);
+    if (initialReleases && initialReleases.length > 0) {
+      const featured = initialReleases.find((r: Release) => r.isFeatured) || initialReleases[0];
+      setFeaturedRelease(featured);
+    } else {
+      fetch('/api/admin/releases')
+        .then(res => res.json())
+        .then(resJson => {
+          const data = resJson.success ? resJson.data : null;
+          if (Array.isArray(data) && data.length > 0) {
+            const featured = data.find((r: Release) => r.isFeatured) || data[0];
+            setFeaturedRelease(featured);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [initialReleases]);
 
   // useSafeScroll: only subscribes once containerRef.current is a live DOM node.
   const { scrollYProgress } = useSafeScroll({
@@ -53,7 +54,7 @@ export const FeaturedReleases = () => {
   return (
     <section
       ref={containerRef}
-      className="relative w-full h-screen bg-[#050505] overflow-hidden flex items-center"
+      className="relative w-full min-h-screen lg:h-screen bg-[#050505] overflow-hidden flex items-center py-20 lg:py-0"
       aria-hidden={!featuredRelease}
     >
       {/* Background Atmosphere — always present */}

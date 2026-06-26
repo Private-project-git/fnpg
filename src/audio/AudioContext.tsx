@@ -21,7 +21,7 @@ interface AudioContextType {
 
 const AudioContext = createContext<AudioContextType | null>(null);
 
-export const AudioProvider = ({ children }: { children: ReactNode }) => {
+export const AudioProvider = ({ children, initialTracks }: { children: ReactNode; initialTracks?: NormalizedTrack[] }) => {
   const audioManager = getAudioManager();
   const [activeTrack, setActiveTrack] = useState<NormalizedTrack | null>(null);
   const [state, setState] = useState<AudioManagerState>({
@@ -42,26 +42,30 @@ export const AudioProvider = ({ children }: { children: ReactNode }) => {
         setState({ ...newState });
       });
       
-      // Fetch dynamic tracks from DB Content Source
-      fetch('/api/admin/tracks')
-        .then(res => res.json())
-        .then(resJson => {
-          const data = resJson.success ? resJson.data : null;
-          if (Array.isArray(data) && data.length > 0) {
-            audioManager.setDynamicTracks(data);
-          } else {
-            console.warn('API returned empty/error list. Using static fallback tracks.');
+      if (initialTracks && initialTracks.length > 0) {
+        audioManager.setDynamicTracks(initialTracks);
+      } else {
+        // Fetch dynamic tracks from DB Content Source
+        fetch('/api/admin/tracks')
+          .then(res => res.json())
+          .then(resJson => {
+            const data = resJson.success ? resJson.data : null;
+            if (Array.isArray(data) && data.length > 0) {
+              audioManager.setDynamicTracks(data);
+            } else {
+              console.warn('API returned empty/error list. Using static fallback tracks.');
+              audioManager.setDynamicTracks(FALLBACK_SONGS);
+            }
+          })
+          .catch(err => {
+            console.error('Failed to fetch tracks. Falling back to static curated tracks:', err);
             audioManager.setDynamicTracks(FALLBACK_SONGS);
-          }
-        })
-        .catch(err => {
-          console.error('Failed to fetch tracks. Falling back to static curated tracks:', err);
-          audioManager.setDynamicTracks(FALLBACK_SONGS);
-        });
+          });
+      }
 
       return unsubscribe;
     }
-  }, [audioManager]);
+  }, [audioManager, initialTracks]);
 
   const transitionTo = async (trackId: string, durationSec = 1.5) => {
     await audioManager.transitionTo(trackId, durationSec);

@@ -47,7 +47,7 @@ export const AudioPlayer = () => {
       initial={{ y: 50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex flex-col w-[280px] md:w-[320px] bg-[#101010] border border-white/5 hover:border-white/10 rounded shadow-2xl overflow-hidden backdrop-blur-md"
+      className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex flex-col w-[280px] md:w-[320px] bg-[#101010] border border-white/5 hover:border-white/10 rounded shadow-2xl overflow-hidden"
     >
       {/* Visualizer bars at the top when playing */}
       <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-white/5 overflow-hidden">
@@ -63,14 +63,25 @@ export const AudioPlayer = () => {
 
       {/* Main Track Detail Wrapper */}
       <div className="p-4 flex items-center justify-between gap-4">
-        {/* Track Meta Details */}
-        <div className="flex flex-col gap-1 overflow-hidden max-w-[150px] md:max-w-[180px]">
-          <span className="font-bebas text-lg md:text-xl text-foreground tracking-wider truncate uppercase">
-            {currentTrack.title}
-          </span>
-          <span className="text-[10px] tracking-[0.2em] font-syne text-text-secondary uppercase truncate">
-            {currentTrack.artist}
-          </span>
+        {/* Track Meta Details with Artwork */}
+        <div className="flex items-center gap-3 truncate max-w-[175px] md:max-w-[205px]">
+          {currentTrack.artwork?.url && (
+            <div className="w-10 h-10 shrink-0 border border-white/5 overflow-hidden rounded bg-[#0e0e0e]">
+              <img 
+                src={currentTrack.artwork.url} 
+                alt={currentTrack.title} 
+                className="w-full h-full object-cover" 
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-0.5 overflow-hidden">
+            <span className="font-bebas text-lg md:text-xl text-foreground tracking-wider truncate uppercase leading-tight">
+              {currentTrack.title}
+            </span>
+            <span className="text-[10px] tracking-[0.2em] font-syne text-text-secondary uppercase truncate leading-none">
+              {currentTrack.artist}
+            </span>
+          </div>
         </div>
 
         {/* Playback Controls Row */}

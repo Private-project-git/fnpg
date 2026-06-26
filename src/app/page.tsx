@@ -1,133 +1,17 @@
-'use client';
+import React from 'react';
+import { ContentProvider } from '@/lib/contentProvider';
+import { HomeClient } from '@/components/HomeClient';
 
-import React, { useEffect, useState } from 'react';
-import { useScroll } from '@/components/ScrollProvider';
-import { AudioPlayer } from '@/components/AudioPlayer';
-
-// The 14 Scenes / Section Components
-import { Landing } from '@/sections/Landing'; // 01 & 02
-import { Hero } from '@/sections/Hero'; // 03
-import { Identity } from '@/sections/Identity'; // 04
-import { FeaturedReleases } from '@/sections/FeaturedReleases'; // 05
-import { ArtistFavorites } from '@/sections/ArtistFavorites'; // 06
-import { FanFavorites } from '@/sections/FanFavorites'; // 07
-import { HottestPlays } from '@/sections/HottestPlays'; // 08
-import { Discography } from '@/sections/Discography'; // 09
-import { Gallery } from '@/sections/Gallery'; // 10
-import { Quotes } from '@/sections/Quotes'; // 11
-import { Platforms } from '@/sections/Platforms'; // 12
-import { Credits } from '@/sections/Credits'; // 13 & 14
-import { Timeline } from '@/sections/Timeline';
-
-const SECTION_COMPONENTS: Record<string, React.ComponentType<any>> = {
-  'hero': Hero,
-  'identity': Identity,
-  'featured': FeaturedReleases,
-  'artist-favs': ArtistFavorites,
-  'fan-favs': FanFavorites,
-  'trending': HottestPlays,
-  'discography': Discography,
-  'gallery': Gallery,
-  'quotes': Quotes,
-  'platforms': Platforms,
-  'credits': Credits,
-  'timeline': Timeline
-};
-
-const DEFAULT_SECTIONS = [
-  { id: 'hero', enabled: true },
-  { id: 'identity', enabled: true },
-  { id: 'featured', enabled: true },
-  { id: 'artist-favs', enabled: true },
-  { id: 'fan-favs', enabled: true },
-  { id: 'trending', enabled: true },
-  { id: 'discography', enabled: true },
-  { id: 'gallery', enabled: true },
-  { id: 'quotes', enabled: true },
-  { id: 'platforms', enabled: true },
-  { id: 'credits', enabled: true }
-];
-
-export default function Home() {
-  const [isEntered, setIsEntered] = useState(false);
-  const [settings, setSettings] = useState<any>(null);
-  const lenis = useScroll();
-
-  // Initially lock scroll when landing page is visible
-  useEffect(() => {
-    if (lenis && !isEntered) {
-      lenis.stop();
-    }
-  }, [lenis, isEntered]);
-
-  const handleEnter = () => {
-    setIsEntered(true);
-  };
-
-  // Fetch Settings on Mount
-  useEffect(() => {
-    fetch('/api/admin/settings')
-      .then(res => res.json())
-      .then(resJson => {
-        const data = resJson.success ? resJson.data : null;
-        setSettings(data);
-      })
-      .catch(err => console.warn('Could not load settings in homepage. Static parameters apply.', err));
-  }, []);
-
-  // Apply visual style custom variables globally
-  useEffect(() => {
-    if (settings?.visual_studio_config) {
-      const config = settings.visual_studio_config;
-      const root = document.documentElement;
-      if (config.borderRadius) root.style.setProperty('--border-radius', `${config.borderRadius}px`);
-      if (config.glassBlur) root.style.setProperty('--glass-blur', `${config.glassBlur}px`);
-      if (config.componentSpacing) root.style.setProperty('--component-spacing', `${config.componentSpacing}px`);
-      if (config.animationSpeed) root.style.setProperty('--animation-speed', `${config.animationSpeed}s`);
-      if (config.filmGrainOpacity !== undefined) {
-        root.style.setProperty('--noise-opacity', `${config.filmGrainOpacity / 100}`);
-      }
-      if (config.vignetteSize !== undefined) {
-        root.style.setProperty('--vignette-size', `${config.vignetteSize}px`);
-      }
-    }
-  }, [settings]);
-
-  const layoutSections = settings?.homepage_layout?.sections || DEFAULT_SECTIONS;
+export default async function Home() {
+  // Retrieve settings and releases directly on the server-side
+  // This makes the public website un-scrappable via simple JSON endpoint requests
+  const settings = await ContentProvider.getSettings();
+  const releases = await ContentProvider.getReleases();
 
   return (
-    <div className="relative w-full min-h-screen bg-[#050505] overflow-x-hidden">
-      {/* Landing Experience Overlay (Scenes 01 & 02) */}
-      <Landing onEnter={handleEnter} />
-
-      {/* Main Experience Layout */}
-      <div 
-        className={`w-full transition-opacity duration-1000 ${
-          isEntered ? 'opacity-100 pointer-events-auto' : 'opacity-0 h-screen overflow-hidden pointer-events-none'
-        }`}
-      >
-        {/* Render sections dynamically in the configured order */}
-        {layoutSections.map((section: any) => {
-          if (!section.enabled) return null;
-          const Component = SECTION_COMPONENTS[section.id];
-          if (!Component) return null;
-          
-          return (
-            <div 
-              key={section.id} 
-              className={section.spacing || ''} 
-              style={{
-                backgroundColor: section.backgroundOverride || undefined
-              }}
-            >
-              <Component settings={settings} />
-            </div>
-          );
-        })}
-        
-        {/* Floating Mini Controller */}
-        <AudioPlayer />
-      </div>
-    </div>
+    <HomeClient 
+      initialSettings={settings} 
+      initialReleases={releases} 
+    />
   );
 }

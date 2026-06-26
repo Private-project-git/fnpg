@@ -52,23 +52,18 @@ export const ScrollProvider = ({ children }: { children: ReactNode }) => {
     gsap.ticker.add(rafCallback);
     gsap.ticker.lagSmoothing(0);
 
-    // Proxy the scroller so ScrollTrigger understands Lenis positions
-    ScrollTrigger.scrollerProxy(document.body, {
-      scrollTop(value) {
-        return arguments.length
-          ? lenisInstance.scrollTo(value!)
-          : lenisInstance.scroll;
-      },
-      getBoundingClientRect() {
-        return { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
-      },
-    });
+    // Sync ScrollTrigger refreshes with Lenis resize to recalculate document height correctly
+    const handleRefresh = () => {
+      lenisInstance.resize();
+    };
+    ScrollTrigger.addEventListener('refresh', handleRefresh);
 
     // Notify consumers that Lenis is ready
     setLenis(lenisInstance);
 
     return () => {
       gsap.ticker.remove(rafCallback);
+      ScrollTrigger.removeEventListener('refresh', handleRefresh);
       lenisInstance.destroy();
       setLenis(null);
     };

@@ -97,7 +97,7 @@ export const ErrorProvider = ({ children }: { children: ReactNode }) => {
             return (
               <div
                 key={err.id}
-                className={`pointer-events-auto w-full p-4 rounded-md border flex gap-3 backdrop-blur-md transition-all duration-500 shadow-xl ${
+                className={`pointer-events-auto w-full p-4 rounded-md border flex gap-3 transition-all duration-500 shadow-xl ${
                   isFatal
                     ? 'bg-[#150505]/95 border-blood-red/80 shadow-blood-red/10'
                     : isError

@@ -5,6 +5,7 @@ import { ScrollProvider } from '@/components/ScrollProvider';
 import { CustomCursor } from '@/components/CustomCursor';
 import { BackgroundEngine } from '@/components/BackgroundEngine';
 import { ErrorProvider } from '@/components/ErrorProvider';
+import { ContentProvider } from '@/lib/contentProvider';
 import './globals.css';
 
 const inter = Inter({
@@ -32,11 +33,14 @@ export const metadata: Metadata = {
   authors: [{ name: '8CTRL Fans' }],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Query tracks directly on the server to bypass client-side REST endpoint fetches
+  const tracks = await ContentProvider.getTracks();
+
   return (
     <html
       lang="en"
@@ -44,7 +48,7 @@ export default function RootLayout({
     >
       <body className="min-h-full overflow-x-hidden text-foreground antialiased font-sans">
         <ErrorProvider>
-          <AudioProvider>
+          <AudioProvider initialTracks={tracks}>
             <ScrollProvider>
               {/* Film Grain & Cinematic Vignette */}
               <div className="noise-overlay" aria-hidden="true" />

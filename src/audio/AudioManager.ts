@@ -229,18 +229,7 @@ export class AudioManager {
    * Transition to a track with advanced crossfading, exponential curves, and ducking.
    */
   private async validateAudioSource(url: string): Promise<boolean> {
-    if (!url) return false;
-    if (url.startsWith('data:')) return true;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const response = await fetch(url, { method: 'HEAD', signal: controller.signal });
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch (err) {
-      console.warn(`Audio source validation failed for ${url}:`, err);
-      return false;
-    }
+    return true; // Allow HTMLAudioElement to resolve media loading and trigger error event handlers naturally.
   }
 
   public async transitionTo(trackId: string, durationSec = 1.5) {

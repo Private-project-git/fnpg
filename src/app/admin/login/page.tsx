@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
 
       {/* Login Card */}
       <div className="w-full max-w-md relative z-10">
-        <div className="bg-[#0E0E0E]/80 backdrop-blur-xl border border-white/5 rounded-lg p-8 shadow-2xl shadow-black/80 relative overflow-hidden group">
+        <div className="bg-[#0E0E0E] border border-white/5 rounded-lg p-8 shadow-2xl shadow-black/80 relative overflow-hidden group">
           {/* Top Decorative Line */}
           <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-blood-red to-transparent" />
           

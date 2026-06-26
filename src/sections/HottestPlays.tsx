@@ -60,7 +60,7 @@ export const HottestPlays = () => {
                   initial={{ opacity: 0, y: 40 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: index * 0.2 }}
-                  className="bg-surface/80 backdrop-blur-md p-8 border border-elevated rounded-xl hover:border-blood-red/50 transition-colors flex flex-col justify-between cursor-pointer"
+                  className="bg-surface p-8 border border-elevated rounded-xl hover:border-blood-red/50 transition-colors flex flex-col justify-between cursor-pointer"
                   onClick={() => {
                     if (state.currentTrackId === item.id) {
                       if (state.isPlaying) {
