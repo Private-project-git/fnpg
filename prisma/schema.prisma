@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+
+
+model Release {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  releaseYear Int
+  coverUrl    String?
+  spotifyUrl  String?
+  appleUrl    String?
+  youtubeUrl  String?
+  type        String   @default("album") // album, single, ep
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Track {
+  id                  String   @id @default(cuid())
+  title               String
+  artist              String   @default("8CTRL")
+  album               String   @default("")
+  coverUrl            String?  @db.Text
+  previewUrl          String?  @db.Text
+  spotifyUrl          String?  @db.Text
+  appleUrl            String?  @db.Text
+  youtubeUrl          String?  @db.Text
+  genre               String   @default("Electronic")
+  duration            Int      @default(30)
+  isFeatured          Boolean  @default(false)
+  isArtistFav         Boolean  @default(false)
+  isFanFav            Boolean  @default(false)
+  isTrending          Boolean  @default(false)
+  isRecommended       Boolean  @default(false)
+  isLatest            Boolean  @default(false)
+  
+  // Visual Identity (formerly in extendedMetadata blob)
+  accentColor         String?
+  backgroundGradient  String?
+  particlePreset      String?  @default("none")
+  lightingPreset      String?  @default("none")
+  transitionStyle     String?  @default("fade")
+  typographyStyle     String?
+  
+  // Metadata & CMS fields
+  slug                String?
+  backgroundArtwork   String?  @db.Text
+  lyrics              String?  @db.Text
+  status              String?  @default("published")
+  displayOrder        Int      @default(0)
+  releaseDate         String?
+  producerCredits     String?  // JSON array string
+  writerCredits       String?  // JSON array string
+
+
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+
+
+model AppConfig {
+  id                String   @id @default(cuid())
+  // Artist / Site
+  artistName        String   @default("8CTRL")
+  artistRealName    String   @default("Ankur")
+  heroText          String   @default("BLOOD RED CINEMATIC")
+  biography         String   @db.Text
+  location          String   @default("")
+  genres            String   // JSON: string[]
+  homepageIntro     String   @db.Text
+  // Theme
+  primaryBackground String   @default("#050505")
+  surface           String   @default("#0E0E0E")
+  elevatedSurface   String   @default("#181818")
+  bloodRed          String   @default("#8B0000")
+  crimsonAccent     String   @default("#C1121F")
+  highlightRed      String   @default("#E63946")
+  borderRadius      Int      @default(4)
+  glassBlur         Int      @default(12)
+  componentSpacing  Int      @default(32)
+  animationSpeed    Float    @default(1.0)
+  filmGrainOpacity  Float    @default(6)
+  vignetteSize      Int      @default(150)
+  // Audio
+  defaultVolume     Float    @default(0.8)
+  fadeDurationSec   Float    @default(1.5)
+  glitchSfxEnabled  Boolean  @default(true)
+  glitchOscType     String   @default("sawtooth")
+  glitchStartFreq   Float    @default(900)
+  glitchEndFreq     Float    @default(80)
+  // SEO
+  seoTitle          String   @default("8CTRL // Cinematic Fan Experience")
+  seoDescription    String   @db.Text
+  seoKeywords       String   // JSON: string[]
+  ogImage           String   @default("")
+  twitterCard       String   @default("summary_large_image")
+  // Platforms
+  instagramUrl      String?
+  youtubeUrl        String?
+  twitterUrl        String?
+  spotifyUrl        String?
+  appleMusicUrl     String?
+  // Homepage layout
+  homepageSections  String   @db.Text  // JSON: HomepageSection[]
+  updatedAt         DateTime @updatedAt
+}
+
+model Scene {
+  id                String   @id @default(cuid())
+  name              String
+  enabled           Boolean  @default(true)
+  displayOrder      Int      @default(0)
+  transitionPreset  String   @default("fade")
+  duration          Float    @default(1.5)
+  backgroundMode    String   @default("solid")
+  accentColor       String   @default("#C1121F")
+  particlePreset    String   @default("none")
+  lightingPreset    String   @default("none")
+  // Extra fields
+  typographyPreset  String?
+  ambientPreset     String?
+  scrollSpeed       Float?
+  overlayEffects    String?
+  blurIntensity     Float?
+  grainIntensity    Float?
+  lightingIntensity Float?
+  accentColors      String?
+  updatedAt         DateTime @updatedAt
+}
+
+model GalleryItem {
+  id           String   @id @default(cuid())
+  url          String   @db.Text
+  caption      String   @default("")
+  category     String   @default("live")
+  tags         String   // JSON: string[]
+  displayOrder Int      @default(0)
+  // Extra fields
+  title        String?
+  photographer String?
+  credits      String?
+  altText      String?
+  featured     Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
+
+model TimelineEvent {
+  id           String   @id @default(cuid())
+  year         String
+  title        String
+  description  String   @db.Text
+  displayOrder Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+model Quote {
+  id           String   @id @default(cuid())
+  text         String   @db.Text
+  author       String
+  source       String   @default("")
+  status       String   @default("published")
+  displayOrder Int      @default(0)
+  updatedAt    DateTime @updatedAt
+}
