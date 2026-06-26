@@ -75,3 +75,37 @@ The project uses Prisma as the ORM to manage MariaDB databases. Here are the cor
   npx prisma db seed
   ```
 
+---
+
+## Deployment & Hosting on Debian Linux (Docker)
+
+To host this project on any Debian device, you can use Docker Compose to orchestrate both the MariaDB database and the Next.js web application.
+
+### Quick Setup
+
+1. Clone this repository on your hosting device.
+2. Grant execution permissions and run the setup script:
+   ```bash
+   chmod +x setup-debian.sh
+   ./setup-debian.sh
+   ```
+
+The script will automatically:
+- Install Docker and Docker Compose (if not present).
+- Generate a production `.env` configuration with a secure random JWT secret.
+- Spin up the MariaDB and Web containers.
+- Run database migrations and seed the real 8CTRL track catalog.
+
+### Manual Docker Commands
+
+If you prefer to run the steps manually:
+
+1. Build and start the containers:
+   ```bash
+   docker compose up -d --build
+   ```
+2. Seed the database:
+   ```bash
+   docker compose exec web npx prisma db seed
+   ```
+

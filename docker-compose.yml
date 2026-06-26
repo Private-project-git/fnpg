@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: fnpg-db
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-Oracle@123}
+      MARIADB_DATABASE: ${DB_NAME:-fanpage}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fnpg-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "mysql://root:${DB_ROOT_PASSWORD:-Oracle@123}@db:3306/${DB_NAME:-fanpage}"
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      JWT_SECRET: ${JWT_SECRET:-secretjwtkey}
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    # Deploy database schema migrations on start before spinning up Next.js
+    command: sh -c "npx prisma migrate deploy && npm start"
+
+volumes:
+  mariadb_data:
