@@ -27,7 +27,7 @@ services:
     ports:
       - "2020:2020"
     environment:
-      DATABASE_URL: "mysql://root:${DB_ROOT_PASSWORD:-Oracle@123}@db:3306/${DB_NAME:-fanpage}"
+      DATABASE_URL: "mysql://root:Oracle%40123@db:3306/${DB_NAME:-fanpage}"
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       JWT_SECRET: ${JWT_SECRET:-secretjwtkey}
       NODE_ENV: production

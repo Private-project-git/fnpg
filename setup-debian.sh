@@ -23,9 +23,9 @@ fi
 # 2. Generate local environment file if it does not exist
 if [ ! -f .env ]; then
   echo "[Setup] Generating production .env file..."
-  JWT_KEY=$(openssl rand -base64 32 2>/dev/null || echo "productionfallbackjwtsecretkeysignhere")
+  JWT_KEY=$(openssl rand -base64 32 2>/dev/null || echo "8ctrl_sec_2026_xYz_super_jwt_secret")
   cat <<EOT > .env
-DATABASE_URL="mysql://root:Oracle@123@db:3306/fanpage"
+DATABASE_URL="mysql://root:Oracle%40123@db:3306/fanpage"
 DB_ROOT_PASSWORD="Oracle@123"
 DB_NAME="fanpage"
 ADMIN_PASSWORD="admin"
