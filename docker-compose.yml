@@ -34,8 +34,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Deploy database schema migrations on start before spinning up Next.js
-    command: sh -c "npx prisma migrate deploy && npm start"
+    # Deploy database schema updates on start before spinning up Next.js
+    command: sh -c "npx prisma db push && npm start"
 
 volumes:
   mariadb_data:
