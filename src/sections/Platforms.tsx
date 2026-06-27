@@ -4,12 +4,17 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink } from 'lucide-react';
 
-export const Platforms = () => {
+export const Platforms = ({ settings }: { settings?: any }) => {
+  const spotifyUrl = settings?.platforms_config?.spotify || settings?.artist_profile?.streamingLinks?.spotify || '#';
+  const appleMusicUrl = settings?.platforms_config?.appleMusic || settings?.artist_profile?.streamingLinks?.appleMusic || '#';
+  const youtubeUrl = settings?.platforms_config?.youtube || settings?.artist_profile?.socialLinks?.youtube || '#';
+  const instagramUrl = settings?.platforms_config?.instagram || settings?.artist_profile?.socialLinks?.instagram || '#';
+
   const platforms = [
-    { name: 'Spotify', color: 'hover:border-[#1DB954]' },
-    { name: 'Apple Music', color: 'hover:border-[#FA243C]' },
-    { name: 'YouTube', color: 'hover:border-[#FF0000]' },
-    { name: 'Instagram', color: 'hover:border-[#E1306C]' }
+    { name: 'Spotify', href: spotifyUrl, color: 'hover:border-[#1DB954]' },
+    { name: 'Apple Music', href: appleMusicUrl, color: 'hover:border-[#FA243C]' },
+    { name: 'YouTube', href: youtubeUrl, color: 'hover:border-[#FF0000]' },
+    { name: 'Instagram', href: instagramUrl, color: 'hover:border-[#E1306C]' }
   ];
 
   return (
@@ -18,7 +23,9 @@ export const Platforms = () => {
         {platforms.map((platform, index) => (
           <motion.a
             key={platform.name}
-            href="#"
+            href={platform.href}
+            target={platform.href !== '#' ? '_blank' : undefined}
+            rel={platform.href !== '#' ? 'noopener noreferrer' : undefined}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: index * 0.1 }}
