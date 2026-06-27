@@ -172,3 +172,19 @@ model Quote {
   displayOrder Int      @default(0)
   updatedAt    DateTime @updatedAt
 }
+
+model TrafficLog {
+  id        String   @id @default(cuid())
+  path      String
+  method    String
+  ip        String?
+  userAgent String?  @db.Text
+  referer   String?  @db.Text
+  country   String?
+  city      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path])
+}
+

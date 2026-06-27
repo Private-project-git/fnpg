@@ -240,7 +240,6 @@ export default function CompleteCMSStudio() {
     { name: 'pills_cover.jpg', size: '302 KB', type: 'image', url: 'https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/a3/c1/93/a3c1935c-f2b3-6c6e-d58d-ffada5fcd90f/5026854886381.jpg/600x600bb.jpg' },
     { name: 'ambient_loop_1.mp3', size: '4.2 MB', type: 'audio', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' },
   ]);
-
   // Toast notifier helper
   const notify = (type: 'success' | 'error' | 'info', message: string) => {
     const id = Date.now();
@@ -250,6 +249,73 @@ export default function CompleteCMSStudio() {
     }, 4000);
   };
 
+  // Traffic monitoring states
+  const [trafficStats, setTrafficStats] = useState<any>(null);
+  const [trafficLoading, setTrafficLoading] = useState(false);
+  const [trafficAutoRefresh, setTrafficAutoRefresh] = useState(true);
+  const [trafficCountdown, setTrafficCountdown] = useState(5);
+  const [hoveredGraphIndex, setHoveredGraphIndex] = useState<number | null>(null);
+
+  const fetchTrafficStats = useCallback(async (showSilentLoading = false) => {
+    if (!showSilentLoading) setTrafficLoading(true);
+    try {
+      const res = await fetch('/api/admin/traffic-stats');
+      if (!res.ok) throw new Error('Failed to fetch traffic stats');
+      const payload = await res.json();
+      if (payload.success) {
+        setTrafficStats(payload.data);
+      }
+    } catch (err) {
+      console.error('Error fetching traffic stats:', err);
+    } finally {
+      if (!showSilentLoading) setTrafficLoading(false);
+    }
+  }, []);
+
+  const purgeTrafficLogs = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL traffic history logs? This cannot be undone.')) {
+      return;
+    }
+    setTrafficLoading(true);
+    try {
+      const res = await fetch('/api/admin/traffic-stats', { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to purge traffic logs');
+      const payload = await res.json();
+      if (payload.success) {
+        notify('success', 'Traffic logs purged successfully');
+        fetchTrafficStats();
+      }
+    } catch (err) {
+      console.error('Error purging traffic logs:', err);
+      notify('error', 'Failed to purge traffic logs');
+    } finally {
+      setTrafficLoading(false);
+    }
+  };
+
+  // Fetch when entering analytics tab
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchTrafficStats();
+    }
+  }, [activeTab, fetchTrafficStats]);
+
+  // Handle countdown and auto refresh polling
+  useEffect(() => {
+    if (activeTab !== 'analytics' || !trafficAutoRefresh) return;
+
+    const timer = setInterval(() => {
+      setTrafficCountdown((prev) => {
+        if (prev <= 1) {
+          fetchTrafficStats(true);
+          return 5;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [activeTab, trafficAutoRefresh, fetchTrafficStats]);
   // Stack tracker on setting modifications
   const pushStateHistory = (nextSettings: any) => {
     const newStack = historyStack.slice(0, historyPointer + 1);
@@ -2105,46 +2171,507 @@ export default function CompleteCMSStudio() {
 
             {/* TAB: ANALYTICS */}
             {activeTab === 'analytics' && (
-              <div className="space-y-6 animate-fade-in font-mono text-xs">
-                <header>
-                  <h2 className="text-2xl font-bebas tracking-wide text-foreground uppercase font-sans">Experience Analytics</h2>
-                  <p className="text-xs text-text-secondary mt-1">Simulated visits, platform clicks, and scroll depth tracking.</p>
+              <div className="space-y-6 animate-fade-in font-mono text-xs text-text-secondary">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-4">
+                  <div>
+                    <h2 className="text-2xl font-bebas tracking-wide text-foreground uppercase font-sans flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-crimson animate-pulse" />
+                      Live Traffic Analytics
+                    </h2>
+                    <p className="text-xs text-text-secondary mt-1">Real-time HTTP requests, visitor geographics, and client telemetry.</p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {/* Auto Refresh Toggle */}
+                    <button
+                      onClick={() => setTrafficAutoRefresh(!trafficAutoRefresh)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded border text-[10px] transition-all cursor-pointer ${
+                        trafficAutoRefresh
+                          ? 'bg-blood-red/10 border-blood-red/40 text-white'
+                          : 'bg-[#0E0E0E] border-white/5 text-[#444] hover:text-foreground'
+                      }`}
+                      title={trafficAutoRefresh ? 'Pause Auto Refresh' : 'Resume Auto Refresh'}
+                    >
+                      {trafficAutoRefresh ? (
+                        <>
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                          </span>
+                          <span>Live ({trafficCountdown}s)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="w-3 h-3" />
+                          <span>Paused</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Manual Refresh */}
+                    <button
+                      onClick={() => fetchTrafficStats()}
+                      disabled={trafficLoading}
+                      className="p-1.5 bg-[#0E0E0E] border border-white/5 rounded text-[#888] hover:text-foreground disabled:opacity-50 hover:bg-[#121212] transition-colors cursor-pointer"
+                      title="Force Refresh"
+                    >
+                      <RotateCw className={`w-3.5 h-3.5 ${trafficLoading ? 'animate-spin text-crimson' : ''}`} />
+                    </button>
+
+                    {/* Purge Logs */}
+                    <button
+                      onClick={purgeTrafficLogs}
+                      disabled={trafficLoading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-crimson/15 border border-crimson/30 hover:bg-crimson/25 rounded text-white text-[10px] transition-all cursor-pointer disabled:opacity-50"
+                      title="Purge traffic history logs"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Purge History
+                    </button>
+                  </div>
                 </header>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-[#0E0E0E] p-6 border border-white/5 rounded space-y-2">
-                    <h4 className="text-[#444] uppercase">Visits Trend (Past Week)</h4>
-                    <div className="h-32 flex items-end justify-between pt-4 gap-1">
-                      {[15, 32, 21, 45, 68, 54, 88].map((val, i) => (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                          <div className="w-full bg-blood-red" style={{ height: `${val}%` }} />
-                          <span className="text-[8px] text-[#444]">D{i+1}</span>
-                        </div>
-                      ))}
-                    </div>
+                {!trafficStats && trafficLoading ? (
+                  <div className="h-96 flex flex-col items-center justify-center gap-3 border border-white/5 rounded bg-[#0E0E0E]">
+                    <RotateCw className="w-8 h-8 animate-spin text-crimson" />
+                    <span className="text-[#666] animate-pulse">Establishing connection to metrics hub...</span>
                   </div>
+                ) : !trafficStats ? (
+                  <div className="h-96 flex flex-col items-center justify-center gap-3 border border-white/5 rounded bg-[#0E0E0E] text-[#666]">
+                    <Database className="w-8 h-8 text-[#333]" />
+                    <span>No traffic telemetry records recorded yet.</span>
+                    <p className="text-[10px] text-[#444] text-center max-w-xs">Visit your site homepage and browse pages to initialize request streams.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Key Metrics Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-[#0E0E0E] p-4 border border-white/5 rounded space-y-1 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity">
+                          <Activity className="w-16 h-16 text-crimson" />
+                        </div>
+                        <span className="text-[#444] uppercase tracking-wider text-[9px] block">Active Now</span>
+                        <div className="flex items-baseline gap-2 pt-1">
+                          <span className="text-3xl font-bebas text-white tracking-wide">
+                            {trafficStats.realtimeActiveUsers}
+                          </span>
+                          <span className="relative flex h-2 w-2 mb-1">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-[#666] block">Unique clients in last 5m</span>
+                      </div>
 
-                  <div className="bg-[#0E0E0E] p-6 border border-white/5 rounded space-y-2">
-                    <h4 className="text-[#444] uppercase">Platform Click Share</h4>
-                    <div className="space-y-2 pt-2 text-[10px]">
-                      {[
-                        { name: 'Spotify Redirects', pct: 45 },
-                        { name: 'Apple Music Redirects', pct: 30 },
-                        { name: 'YouTube Views', pct: 25 },
-                      ].map((item, i) => (
-                        <div key={i} className="space-y-1">
-                          <div className="flex justify-between">
-                            <span>{item.name}</span>
-                            <span>{item.pct}%</span>
-                          </div>
-                          <div className="w-full h-1 bg-[#050505] rounded-full overflow-hidden">
-                            <div className="h-full bg-crimson" style={{ width: `${item.pct}%` }} />
+                      <div className="bg-[#0E0E0E] p-4 border border-white/5 rounded space-y-1 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity">
+                          <Eye className="w-16 h-16 text-crimson" />
+                        </div>
+                        <span className="text-[#444] uppercase tracking-wider text-[9px] block">Total Page Views (24h)</span>
+                        <div className="pt-1">
+                          <span className="text-3xl font-bebas text-white tracking-wide">
+                            {trafficStats.totalViews24h}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-[#666] block">Aggregate requests logged</span>
+                      </div>
+
+                      <div className="bg-[#0E0E0E] p-4 border border-white/5 rounded space-y-1 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity">
+                          <User className="w-16 h-16 text-crimson" />
+                        </div>
+                        <span className="text-[#444] uppercase tracking-wider text-[9px] block">Unique Visitors (24h)</span>
+                        <div className="pt-1">
+                          <span className="text-3xl font-bebas text-white tracking-wide">
+                            {trafficStats.uniqueVisitors24h}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-[#666] block">Distinct IPs analyzed</span>
+                      </div>
+
+                      <div className="bg-[#0E0E0E] p-4 border border-white/5 rounded space-y-1 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity">
+                          <Sliders className="w-16 h-16 text-crimson" />
+                        </div>
+                        <span className="text-[#444] uppercase tracking-wider text-[9px] block">Avg Velocity</span>
+                        <div className="pt-1">
+                          <span className="text-3xl font-bebas text-white tracking-wide">
+                            {(trafficStats.totalViews24h / 24).toFixed(1)}
+                          </span>
+                          <span className="text-[10px] text-text-secondary ml-1">/ hr</span>
+                        </div>
+                        <span className="text-[10px] text-[#666] block">Hourly load rate over 24h</span>
+                      </div>
+                    </div>
+
+                    {/* Chart Box */}
+                    <div className="bg-[#0E0E0E] border border-white/5 rounded p-6 space-y-4 relative">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                        <h3 className="text-xs uppercase text-foreground font-bold tracking-wider">Traffic Velocity (Past 24 Hours)</h3>
+                        <div className="flex gap-4 text-[9px] text-[#666]">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-1 bg-crimson inline-block rounded-full" />
+                            Page Views
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-1 border-t border-dashed border-red-400 inline-block" />
+                            Unique Visitors
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* SVG Chart Wrapper */}
+                      <div className="relative h-64 w-full">
+                        {(() => {
+                          const graphData = trafficStats.graphData || [];
+                          const maxVal = Math.max(...graphData.map((d: any) => d.views), ...graphData.map((d: any) => d.unique), 5) * 1.15;
+                          
+                          const pointsViews = graphData.map((d: any, i: number) => {
+                            const x = graphData.length > 1 ? 40 + (i / (graphData.length - 1)) * 920 : 40;
+                            const y = 260 - (d.views / maxVal) * 240;
+                            return { x, y };
+                          });
+
+                          const pointsUniques = graphData.map((d: any, i: number) => {
+                            const x = graphData.length > 1 ? 40 + (i / (graphData.length - 1)) * 920 : 40;
+                            const y = 260 - (d.unique / maxVal) * 240;
+                            return { x, y };
+                          });
+
+                          const pathViewsLine = pointsViews.map((p: any, i: number) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ');
+                          const pathUniquesLine = pointsUniques.map((p: any, i: number) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ');
+                          
+                          const pathViewsArea = pointsViews.length > 0 ? `${pathViewsLine} L ${pointsViews[pointsViews.length - 1].x} 260 L ${pointsViews[0].x} 260 Z` : '';
+                          const pathUniquesArea = pointsUniques.length > 0 ? `${pathUniquesLine} L ${pointsUniques[pointsUniques.length - 1].x} 260 L ${pointsUniques[0].x} 260 Z` : '';
+
+                          return (
+                            <>
+                              <svg className="w-full h-full" viewBox="0 0 1000 300" preserveAspectRatio="none">
+                                <defs>
+                                  <linearGradient id="viewsGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#C1121F" stopOpacity="0.25" />
+                                    <stop offset="100%" stopColor="#C1121F" stopOpacity="0.0" />
+                                  </linearGradient>
+                                  <linearGradient id="uniquesGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#E63946" stopOpacity="0.12" />
+                                    <stop offset="100%" stopColor="#E63946" stopOpacity="0.0" />
+                                  </linearGradient>
+                                  <filter id="chartGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="4" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                  </filter>
+                                </defs>
+
+                                {/* Y-Axis Gridlines & labels */}
+                                <line x1="40" y1="20" x2="960" y2="20" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
+                                <line x1="40" y1="140" x2="960" y2="140" stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" />
+                                <line x1="40" y1="260" x2="960" y2="260" stroke="rgba(255,255,255,0.07)" />
+
+                                {/* Vertical gridlines */}
+                                {graphData.map((d: any, i: number) => {
+                                  if (i % 4 !== 0) return null;
+                                  const x = graphData.length > 1 ? 40 + (i / (graphData.length - 1)) * 920 : 40;
+                                  return (
+                                    <line
+                                      key={i}
+                                      x1={x}
+                                      y1="20"
+                                      x2={x}
+                                      y2="260"
+                                      stroke="rgba(255,255,255,0.02)"
+                                      strokeDasharray="2 2"
+                                    />
+                                  );
+                                })}
+
+                                {/* Filled area paths */}
+                                {pathViewsArea && <path d={pathViewsArea} fill="url(#viewsGrad)" />}
+                                {pathUniquesArea && <path d={pathUniquesArea} fill="url(#uniquesGrad)" />}
+
+                                {/* Line paths */}
+                                {pathViewsLine && (
+                                  <path
+                                    d={pathViewsLine}
+                                    fill="none"
+                                    stroke="#C1121F"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    style={{ filter: 'url(#chartGlow)' }}
+                                  />
+                                )}
+                                {pathUniquesLine && (
+                                  <path
+                                    d={pathUniquesLine}
+                                    fill="none"
+                                    stroke="#E63946"
+                                    strokeWidth="2.5"
+                                    strokeDasharray="4 3"
+                                    strokeLinecap="round"
+                                  />
+                                )}
+
+                                {/* Interactive Hover line & highlights */}
+                                {hoveredGraphIndex !== null && pointsViews[hoveredGraphIndex] && (
+                                  <>
+                                    <line
+                                      x1={pointsViews[hoveredGraphIndex].x}
+                                      y1="20"
+                                      x2={pointsViews[hoveredGraphIndex].x}
+                                      y2="260"
+                                      stroke="rgba(255,255,255,0.2)"
+                                      strokeWidth="1.5"
+                                      strokeDasharray="3 3"
+                                    />
+                                    <circle
+                                      cx={pointsViews[hoveredGraphIndex].x}
+                                      cy={pointsViews[hoveredGraphIndex].y}
+                                      r="6"
+                                      fill="#ffffff"
+                                      stroke="#C1121F"
+                                      strokeWidth="3"
+                                    />
+                                    <circle
+                                      cx={pointsUniques[hoveredGraphIndex].x}
+                                      cy={pointsUniques[hoveredGraphIndex].y}
+                                      r="5"
+                                      fill="#ffffff"
+                                      stroke="#E63946"
+                                      strokeWidth="2"
+                                    />
+                                  </>
+                                )}
+                              </svg>
+
+                              {/* Hover Grid overlay to capture pointer events */}
+                              <div className="absolute inset-0 flex pl-[40px] pr-[40px] pt-[20px] pb-[40px]">
+                                {graphData.map((d: any, i: number) => (
+                                  <div
+                                    key={i}
+                                    className="flex-1 h-full cursor-crosshair border-r border-transparent hover:bg-white/[0.01]"
+                                    onMouseEnter={() => setHoveredGraphIndex(i)}
+                                    onMouseLeave={() => setHoveredGraphIndex(null)}
+                                  />
+                                ))}
+                              </div>
+
+                              {/* Chart labels overlay */}
+                              {/* Y-axis Labels */}
+                              <div className="absolute left-0 top-[20px] bottom-[40px] flex flex-col justify-between text-[8px] text-[#444] pointer-events-none select-none pl-1">
+                                <span>{Math.round(maxVal)}</span>
+                                <span>{Math.round(maxVal / 2)}</span>
+                                <span>0</span>
+                              </div>
+
+                              {/* X-axis Labels */}
+                              <div className="absolute left-[40px] right-[40px] bottom-0 flex justify-between text-[8px] text-[#444] pointer-events-none select-none">
+                                {graphData.map((d: any, i: number) => {
+                                  // Show every 4th label to prevent overflow
+                                  if (i % 4 !== 0 && i !== graphData.length - 1) return null;
+                                  return (
+                                    <span key={i} style={{ transform: 'translateX(-50%)' }} className="first:translate-x-0 last:translate-x-[-100%]">
+                                      {d.label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Floating Tooltip */}
+                              {hoveredGraphIndex !== null && graphData[hoveredGraphIndex] && (
+                                <div
+                                  className="absolute bg-[#121212] border border-white/10 p-3 rounded shadow-2xl pointer-events-none z-10 space-y-1.5 text-[9px] font-mono w-44"
+                                  style={{
+                                    left: hoveredGraphIndex / graphData.length > 0.7 
+                                      ? `${(hoveredGraphIndex / graphData.length) * 100 - 45}%` 
+                                      : `${(hoveredGraphIndex / graphData.length) * 100 + 5}%`,
+                                    top: '20px',
+                                    backdropFilter: 'blur(8px)',
+                                  }}
+                                >
+                                  <div className="text-white font-bold border-b border-white/5 pb-1 mb-1 flex justify-between">
+                                    <span>Timeframe:</span>
+                                    <span className="text-[#888]">{graphData[hoveredGraphIndex].label}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="flex items-center gap-1.5 text-text-secondary">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-crimson" />
+                                      Views:
+                                    </span>
+                                    <span className="text-white font-bold">{graphData[hoveredGraphIndex].views} requests</span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="flex items-center gap-1.5 text-text-secondary">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                                      Unique:
+                                    </span>
+                                    <span className="text-white font-bold">{graphData[hoveredGraphIndex].unique} visitors</span>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Bottom Breakdown Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Left: Live Request Stream */}
+                      <div className="bg-[#0E0E0E] border border-white/5 rounded p-6 space-y-4">
+                        <header className="flex justify-between items-center border-b border-white/5 pb-3">
+                          <h3 className="text-xs uppercase text-foreground font-bold tracking-wider flex items-center gap-1.5">
+                            <Terminal className="w-3.5 h-3.5 text-crimson" />
+                            Live Request Stream
+                          </h3>
+                          <span className="text-[9px] text-[#444] uppercase">Last 30 events</span>
+                        </header>
+
+                        <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 select-text scrollbar-thin">
+                          {trafficStats.recentRequests && trafficStats.recentRequests.length > 0 ? (
+                            trafficStats.recentRequests.map((req: any) => {
+                              const isPost = req.method === 'POST';
+                              const isDelete = req.method === 'DELETE';
+                              
+                              // Helper for formatting time relative to current
+                              const timeString = (() => {
+                                const date = new Date(req.createdAt);
+                                const diff = Date.now() - date.getTime();
+                                if (diff < 5000) return 'Just now';
+                                const seconds = Math.floor(diff / 1000);
+                                if (seconds < 60) return `${seconds}s ago`;
+                                const minutes = Math.floor(seconds / 60);
+                                if (minutes < 60) return `${minutes}m ago`;
+                                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              })();
+
+                              return (
+                                <div key={req.id} className="p-2 border border-white/[0.02] hover:border-white/5 hover:bg-white/[0.01] rounded flex items-center justify-between gap-4 transition-all text-[10px]">
+                                  <div className="flex items-center gap-2 overflow-hidden">
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                      isPost 
+                                        ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                                        : isDelete 
+                                          ? 'bg-red-500/10 text-red-500 border border-red-500/20' 
+                                          : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                    }`}>
+                                      {req.method}
+                                    </span>
+                                    <span className="text-white font-medium truncate tracking-wide" title={req.path}>
+                                      {req.path}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-3 text-right flex-shrink-0 text-[9px] text-[#555]">
+                                    <span className="hover:text-[#888] transition-colors" title={req.userAgent || ''}>
+                                      {req.ip ? (req.ip.startsWith('::ffff:') ? req.ip.substring(7) : req.ip) : 'unknown'}
+                                    </span>
+                                    <span className="flex items-center gap-1" title={`${req.city || ''} ${req.country || ''}`}>
+                                      <Globe className="w-2.5 h-2.5 text-[#333]" />
+                                      {req.country ? `${req.city ? req.city + ', ' : ''}${req.country}` : 'Local'}
+                                    </span>
+                                    <span className="text-[#666]">{timeString}</span>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="h-48 flex items-center justify-center text-[#444] text-[10px]">
+                              Waiting for request traffic logs...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Breakdowns */}
+                      <div className="bg-[#0E0E0E] border border-white/5 rounded p-6 space-y-6">
+                        {/* Top Visited Pages */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs uppercase text-foreground font-bold tracking-wider border-b border-white/5 pb-2">Top Visited Resources</h4>
+                          <div className="space-y-2.5">
+                            {trafficStats.topPages && trafficStats.topPages.length > 0 ? (
+                              trafficStats.topPages.map((page: any, idx: number) => {
+                                const total = trafficStats.totalViews24h || 1;
+                                const percentage = Math.round((page.count / total) * 100);
+                                return (
+                                  <div key={idx} className="space-y-1.5">
+                                    <div className="flex justify-between text-[10px]">
+                                      <span className="text-white tracking-wide font-medium">{page.path}</span>
+                                      <span className="text-[#666]">{page.count} views ({percentage}%)</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-white/[0.02] rounded-full overflow-hidden">
+                                      <div className="h-full bg-crimson" style={{ width: `${percentage}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-center py-6 text-[#444] text-[10px]">No page breakdown analytics available.</div>
+                            )}
                           </div>
                         </div>
-                      ))}
+
+                        {/* Top Referrers */}
+                        <div className="space-y-3">
+                          <h4 className="text-xs uppercase text-foreground font-bold tracking-wider border-b border-white/5 pb-2">Traffic Sources (Referrers)</h4>
+                          <div className="space-y-2">
+                            {trafficStats.topReferrers && trafficStats.topReferrers.length > 0 ? (
+                              trafficStats.topReferrers.map((ref: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center py-1 border-b border-white/[0.01] last:border-b-0 text-[10px]">
+                                  <span className="text-white">{ref.referer}</span>
+                                  <span className="text-[#666]">{ref.count} clicks</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center py-6 text-[#444] text-[10px]">No referrer history logs recorded.</div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Device / Browser Share */}
+                        <div className="grid grid-cols-2 gap-6 pt-2">
+                          <div className="space-y-2">
+                            <h4 className="text-[10px] uppercase text-[#666] tracking-wider">Device Class</h4>
+                            <div className="space-y-2 text-[10px]">
+                              <div className="flex justify-between items-center">
+                                <span className="flex items-center gap-1.5 text-white">
+                                  <Monitor className="w-3 h-3 text-text-secondary" />
+                                  Desktop
+                                </span>
+                                <span className="font-bold">{trafficStats.deviceBreakdown?.desktop || 100}%</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="flex items-center gap-1.5 text-white">
+                                  <Smartphone className="w-3 h-3 text-text-secondary" />
+                                  Mobile
+                                </span>
+                                <span className="font-bold">{trafficStats.deviceBreakdown?.mobile || 0}%</span>
+                              </div>
+                              <div className="w-full h-1 bg-white/[0.02] rounded-full overflow-hidden flex">
+                                <div className="h-full bg-crimson" style={{ width: `${trafficStats.deviceBreakdown?.desktop || 100}%` }} />
+                                <div className="h-full bg-red-400" style={{ width: `${trafficStats.deviceBreakdown?.mobile || 0}%` }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <h4 className="text-[10px] uppercase text-[#666] tracking-wider">Browser Client</h4>
+                            <div className="space-y-1.5 text-[9px]">
+                              {trafficStats.browserBreakdown && trafficStats.browserBreakdown.length > 0 ? (
+                                trafficStats.browserBreakdown.slice(0, 3).map((browser: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between items-center">
+                                    <span className="text-white">{browser.name}</span>
+                                    <span className="text-[#666] font-medium">{browser.percentage}%</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-[#444]">Unknown</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             )}
 

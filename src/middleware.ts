@@ -1,12 +1,64 @@
 // src/middleware.ts
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextRequest, NextFetchEvent } from 'next/server';
 import { verifySession } from './lib/auth';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const JWT_SECRET = process.env.JWT_SECRET || ADMIN_PASSWORD;
 
-export async function middleware(request: NextRequest) {
+function logRequest(request: NextRequest, event: NextFetchEvent) {
+  const { pathname } = request.nextUrl;
+
+  // Exclude static assets, internal Next.js pages, and our traffic analytics API endpoints
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/placeholders') ||
+    pathname.startsWith('/api/log-request') ||
+    pathname.startsWith('/api/admin/traffic-stats') ||
+    pathname.includes('.')
+  ) {
+    return;
+  }
+
+  const reqAny = request as any;
+  const country = request.headers.get('x-vercel-ip-country') || reqAny.geo?.country || '';
+  const city = request.headers.get('x-vercel-ip-city') || reqAny.geo?.city || '';
+  const ip = reqAny.ip || request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
+
+  const origin = request.nextUrl.origin;
+  const logPromise = fetch(`${origin}/api/log-request`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-key': JWT_SECRET,
+    },
+    body: JSON.stringify({
+      path: pathname,
+      method: request.method,
+      ip,
+      userAgent: request.headers.get('user-agent') || '',
+      referer: request.headers.get('referer') || '',
+      country,
+      city,
+    }),
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        console.error('Logging endpoint returned status:', res.status, await res.text());
+      }
+    })
+    .catch((err) => {
+      console.error('Error sending request log:', err);
+    });
+
+  event.waitUntil(logPromise);
+}
+
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
+  // Log request in a non-blocking way
+  logRequest(request, event);
+
   const { pathname } = request.nextUrl;
 
   // 1. Host Header Validation (Security Hardening against Host Header Injection)
