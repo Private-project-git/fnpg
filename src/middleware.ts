@@ -26,7 +26,9 @@ function logRequest(request: NextRequest, event: NextFetchEvent) {
   const city = request.headers.get('x-vercel-ip-city') || reqAny.geo?.city || '';
   const ip = reqAny.ip || request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '';
 
-  const origin = request.nextUrl.origin;
+  // Use local loopback to prevent NAT loopback / DNS issues on public reverse proxies
+  const localPort = process.env.PORT || '2020';
+  const origin = `http://127.0.0.1:${localPort}`;
   const logPromise = fetch(`${origin}/api/log-request`, {
     method: 'POST',
     headers: {
@@ -45,11 +47,11 @@ function logRequest(request: NextRequest, event: NextFetchEvent) {
   })
     .then(async (res) => {
       if (!res.ok) {
-        console.error('Logging endpoint returned status:', res.status, await res.text());
+        console.warn('Traffic logger: endpoint returned status:', res.status);
       }
     })
     .catch((err) => {
-      console.error('Error sending request log:', err);
+      console.warn('Traffic logger: Failed to send log (', err.message || String(err), ')');
     });
 
   event.waitUntil(logPromise);
