@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 # Install dependencies, including devDependencies for TypeScript building
-RUN npm ci
+RUN npm install
 
 # Stage 2: Builder
 FROM node:20-slim AS builder
