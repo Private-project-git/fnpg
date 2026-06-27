@@ -3,11 +3,12 @@ import { apiSuccess, apiError } from '@/lib/apiResponse';
 import { TrackRepository } from '@/lib/repositories/track.repository';
 import { TrackMapper } from '@/lib/mappers/track.mapper';
 import { TrackSchema } from '@/lib/validation';
+import { Track as DbTrack } from '@prisma/client';
 
 export async function GET() {
   try {
     const dbTracks = await TrackRepository.findAll();
-    const tracks = dbTracks.map(t => TrackMapper.toDomain(t));
+    const tracks = dbTracks.map((t: DbTrack) => TrackMapper.toDomain(t));
     return apiSuccess(tracks, 'Tracks retrieved successfully');
   } catch (error: any) {
     console.warn('Database error while fetching tracks:', error);
